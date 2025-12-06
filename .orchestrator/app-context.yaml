@@ -1,0 +1,36 @@
+# App Context: duperr - Duplicate File Finder
+
+type: CLI Tool
+language: Rust
+purpose: Find and manage duplicate files recursively with emphasis on safety and speed
+
+core_entities:
+  - files (path, size, hash)
+  - duplicate_groups (files sharing same content)
+  - scan_results (all found duplicates)
+
+key_flows:
+  - scan: recursively walk directory, group by size, hash to confirm
+  - report: display duplicate groups with paths and sizes
+  - action: optionally delete/backup duplicates with user confirmation
+
+design_principles:
+  - safety_first: never delete without explicit confirmation, backup options
+  - speed: size-based pre-filtering before expensive hashing
+  - progressive_hashing: partial hash first, full hash only if needed
+  - parallelism: leverage multiple cores for file I/O and hashing
+  - memory_efficient: stream large files, don't load entirely into memory
+
+tech_stack:
+  - clap: CLI argument parsing
+  - walkdir: recursive directory traversal
+  - rayon: parallel processing
+  - blake3 or xxhash: fast hashing
+  - indicatif: progress bars
+  - colored: terminal output formatting
+
+patterns:
+  - builder pattern for configuration
+  - iterator chains for file processing pipeline
+  - Result/Option for error handling
+  - structured logging

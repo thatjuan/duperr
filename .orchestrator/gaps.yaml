@@ -1,0 +1,23 @@
+# Gaps Log
+# All gaps addressed during implementation
+
+entries:
+  - id: GAP-001
+    description: "Empty file handling - all empty files have same hash, need special case"
+    assigned_task: TASK-005
+    status: resolved
+
+  - id: GAP-002
+    description: "Hardlink detection - same inode = same file, not duplicate"
+    assigned_task: TASK-004
+    status: resolved
+
+  - id: GAP-003
+    description: "Missing --paranoid byte-compare option for hash collision protection"
+    assigned_task: TASK-006
+    status: resolved
+
+  - id: GAP-004
+    description: "Special file types (FIFO, socket, device) need explicit filtering"
+    assigned_task: TASK-004
+    status: resolved

@@ -1,0 +1,8 @@
+# Orchestration History (append-only billing record)
+
+- prompt: "Design and implement a Rust CLI tool for finding duplicate files recursively with safety and speed focus"
+  started_at: "2025-12-06T10:10:00Z"
+  completed_at: "2025-12-06T10:30:00Z"
+  duration: "20m"
+  tasks_completed: 14
+  gaps_fixed: 4
