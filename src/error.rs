@@ -127,3 +127,93 @@ impl ErrorLog {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::io;
+    use std::path::{Path, PathBuf};
+
+    #[test]
+    fn test_from_io_with_path_permission_denied() {
+        let err = io::Error::new(io::ErrorKind::PermissionDenied, "permission denied");
+        let scan_err = ScanError::from_io_with_path(Path::new("/test/path"), err);
+
+        match scan_err {
+            ScanError::PermissionDenied(p) => assert_eq!(p, PathBuf::from("/test/path")),
+            _ => panic!("Expected PermissionDenied"),
+        }
+    }
+
+    #[test]
+    fn test_from_io_with_path_not_found() {
+        let err = io::Error::new(io::ErrorKind::NotFound, "not found");
+        let scan_err = ScanError::from_io_with_path(Path::new("/missing/file"), err);
+
+        match scan_err {
+            ScanError::NotFound(p) => assert_eq!(p, PathBuf::from("/missing/file")),
+            _ => panic!("Expected NotFound"),
+        }
+    }
+
+    #[test]
+    fn test_from_io_with_path_other_error() {
+        let err = io::Error::new(io::ErrorKind::Other, "other error");
+        let scan_err = ScanError::from_io_with_path(Path::new("/some/file"), err);
+
+        match scan_err {
+            ScanError::FileRead(p, _) => assert_eq!(p, PathBuf::from("/some/file")),
+            _ => panic!("Expected FileRead"),
+        }
+    }
+
+    #[test]
+    fn test_is_fatal() {
+        assert!(ScanError::Config("error".to_string()).is_fatal());
+        assert!(ScanError::BackupInsideScanned(
+            PathBuf::from("/a"),
+            PathBuf::from("/b")
+        ).is_fatal());
+        assert!(ScanError::Cancelled.is_fatal());
+
+        assert!(!ScanError::PermissionDenied(PathBuf::new()).is_fatal());
+        assert!(!ScanError::NotFound(PathBuf::new()).is_fatal());
+    }
+
+    #[test]
+    fn test_is_ignorable() {
+        assert!(ScanError::PermissionDenied(PathBuf::new()).is_ignorable());
+        assert!(ScanError::NotFound(PathBuf::new()).is_ignorable());
+        assert!(ScanError::FileRead(PathBuf::new(),
+            io::Error::new(io::ErrorKind::Other, "")
+        ).is_ignorable());
+
+        assert!(!ScanError::Config("error".to_string()).is_ignorable());
+        assert!(!ScanError::Cancelled.is_ignorable());
+    }
+
+    #[test]
+    fn test_error_log() {
+        let mut log = ErrorLog::new();
+        assert!(log.is_empty());
+        assert_eq!(log.len(), 0);
+
+        log.add(ScanError::PermissionDenied(PathBuf::from("/test")));
+        assert!(!log.is_empty());
+        assert_eq!(log.len(), 1);
+
+        log.add(ScanError::NotFound(PathBuf::from("/missing")));
+        assert_eq!(log.len(), 2);
+    }
+
+    #[test]
+    fn test_error_display() {
+        let err = ScanError::PermissionDenied(PathBuf::from("/secret/file"));
+        assert!(err.to_string().contains("Permission denied"));
+        assert!(err.to_string().contains("/secret/file"));
+
+        let err = ScanError::Config("invalid setting".to_string());
+        assert!(err.to_string().contains("Configuration error"));
+        assert!(err.to_string().contains("invalid setting"));
+    }
+}

@@ -143,3 +143,181 @@ pub fn verify_with_byte_compare(
         })
         .collect()
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::scanner::{FileEntry, FileId};
+    use std::path::PathBuf;
+    use std::time::{Duration, SystemTime};
+    use tempfile::tempdir;
+    use std::fs::File;
+    use std::io::Write;
+
+    fn create_test_file(dir: &std::path::Path, name: &str, content: &[u8]) -> PathBuf {
+        let path = dir.join(name);
+        let mut file = File::create(&path).unwrap();
+        file.write_all(content).unwrap();
+        path
+    }
+
+    fn make_entry(path: PathBuf, size: u64) -> FileEntry {
+        FileEntry {
+            path,
+            size,
+            file_id: FileId { device: 1, inode: rand::random() },
+            modified: SystemTime::UNIX_EPOCH + Duration::from_secs(1000),
+            partial_hash: None,
+            full_hash: None,
+        }
+    }
+
+    #[test]
+    fn test_group_by_partial_hash_same_content() {
+        let dir = tempdir().unwrap();
+        let content = b"duplicate content for partial hash test";
+
+        let path1 = create_test_file(dir.path(), "file1.txt", content);
+        let path2 = create_test_file(dir.path(), "file2.txt", content);
+
+        let entry1 = make_entry(path1, content.len() as u64);
+        let entry2 = make_entry(path2, content.len() as u64);
+
+        let groups = vec![DuplicateGroup::new(content.len() as u64, vec![entry1, entry2])];
+
+        let result = group_by_partial_hash(groups).unwrap();
+
+        assert_eq!(result.len(), 1, "Same content should form one group");
+        assert_eq!(result[0].files.len(), 2);
+    }
+
+    #[test]
+    fn test_group_by_partial_hash_different_content() {
+        let dir = tempdir().unwrap();
+
+        let path1 = create_test_file(dir.path(), "file1.txt", b"content one");
+        let path2 = create_test_file(dir.path(), "file2.txt", b"content two");
+
+        let entry1 = make_entry(path1, 11);
+        let entry2 = make_entry(path2, 11);
+
+        // Same size but different content
+        let groups = vec![DuplicateGroup::new(11, vec![entry1, entry2])];
+
+        let result = group_by_partial_hash(groups).unwrap();
+
+        assert_eq!(result.len(), 0, "Different content should not group");
+    }
+
+    #[test]
+    fn test_group_by_full_hash_same_content() {
+        let dir = tempdir().unwrap();
+        let content = b"duplicate content for full hash test";
+
+        let path1 = create_test_file(dir.path(), "file1.txt", content);
+        let path2 = create_test_file(dir.path(), "file2.txt", content);
+
+        let mut entry1 = make_entry(path1, content.len() as u64);
+        let mut entry2 = make_entry(path2, content.len() as u64);
+
+        // Set partial hashes (they would match)
+        entry1.partial_hash = Some([0u8; 32]);
+        entry2.partial_hash = Some([0u8; 32]);
+
+        let groups = vec![DuplicateGroup::new(content.len() as u64, vec![entry1, entry2])];
+
+        let result = group_by_full_hash(groups).unwrap();
+
+        assert_eq!(result.len(), 1, "Same content should form one group");
+        assert_eq!(result[0].files.len(), 2);
+        assert!(result[0].hash.is_some(), "Full hash should be set");
+    }
+
+    #[test]
+    fn test_group_by_full_hash_different_content() {
+        let dir = tempdir().unwrap();
+
+        let path1 = create_test_file(dir.path(), "file1.txt", b"different 1");
+        let path2 = create_test_file(dir.path(), "file2.txt", b"different 2");
+
+        let entry1 = make_entry(path1, 11);
+        let entry2 = make_entry(path2, 11);
+
+        let groups = vec![DuplicateGroup::new(11, vec![entry1, entry2])];
+
+        let result = group_by_full_hash(groups).unwrap();
+
+        assert_eq!(result.len(), 0, "Different content should not group");
+    }
+
+    #[test]
+    fn test_verify_with_byte_compare_identical() {
+        let dir = tempdir().unwrap();
+        let content = b"content for paranoid verification";
+
+        let path1 = create_test_file(dir.path(), "file1.txt", content);
+        let path2 = create_test_file(dir.path(), "file2.txt", content);
+
+        let entry1 = make_entry(path1, content.len() as u64);
+        let entry2 = make_entry(path2, content.len() as u64);
+
+        let groups = vec![DuplicateGroup {
+            hash: Some([1u8; 32]),
+            size: content.len() as u64,
+            files: vec![entry1, entry2],
+        }];
+
+        let result = verify_with_byte_compare(groups).unwrap();
+
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].files.len(), 2);
+    }
+
+    #[test]
+    fn test_verify_with_byte_compare_different() {
+        let dir = tempdir().unwrap();
+
+        let path1 = create_test_file(dir.path(), "file1.txt", b"content A");
+        let path2 = create_test_file(dir.path(), "file2.txt", b"content B");
+
+        let entry1 = make_entry(path1, 9);
+        let entry2 = make_entry(path2, 9);
+
+        // Pretend they have same hash (simulating collision)
+        let groups = vec![DuplicateGroup {
+            hash: Some([1u8; 32]),
+            size: 9,
+            files: vec![entry1, entry2],
+        }];
+
+        let result = verify_with_byte_compare(groups).unwrap();
+
+        // Should filter out the false positive
+        assert!(result.is_empty() || result[0].files.len() < 2);
+    }
+
+    #[test]
+    fn test_empty_groups() {
+        let result = group_by_partial_hash(vec![]).unwrap();
+        assert!(result.is_empty());
+
+        let result = group_by_full_hash(vec![]).unwrap();
+        assert!(result.is_empty());
+
+        let result = verify_with_byte_compare(vec![]).unwrap();
+        assert!(result.is_empty());
+    }
+
+    #[test]
+    fn test_single_file_groups_filtered() {
+        let dir = tempdir().unwrap();
+        let content = b"single file";
+        let path = create_test_file(dir.path(), "single.txt", content);
+        let entry = make_entry(path, content.len() as u64);
+
+        let groups = vec![DuplicateGroup::new(content.len() as u64, vec![entry])];
+
+        let result = group_by_partial_hash(groups).unwrap();
+        assert!(result.is_empty(), "Single file should be filtered");
+    }
+}

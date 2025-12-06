@@ -140,3 +140,123 @@ pub fn validate_backup_dir(backup_dir: &Path, scan_paths: &[PathBuf]) -> Result<
 
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tempfile::tempdir;
+    use std::fs;
+
+    #[test]
+    fn test_create_backup_path_simple() {
+        let backup_dir = Path::new("/backup");
+        // Note: create_backup_path strips the root
+        let source = PathBuf::from("/home/user/file.txt");
+        let result = create_backup_path(&source, backup_dir);
+
+        // Should be /backup/home/user/file.txt (root stripped)
+        assert!(result.starts_with("/backup"));
+        assert!(result.to_string_lossy().contains("file.txt"));
+    }
+
+    #[test]
+    fn test_create_backup_path_nested() {
+        let backup_dir = Path::new("/backup");
+        let source = PathBuf::from("/a/b/c/d/file.txt");
+        let result = create_backup_path(&source, backup_dir);
+
+        assert!(result.to_string_lossy().contains("file.txt"));
+    }
+
+    #[test]
+    fn test_backup_file_success() {
+        let source_dir = tempdir().unwrap();
+        let backup_dir = tempdir().unwrap();
+
+        // Create source file
+        let source_path = source_dir.path().join("test.txt");
+        fs::write(&source_path, b"test content").unwrap();
+
+        // Backup the file
+        let result = backup_file(&source_path, backup_dir.path());
+        assert!(result.is_ok());
+
+        let backup_path = result.unwrap();
+        assert!(backup_path.exists());
+
+        // Content should match
+        let backed_up_content = fs::read(&backup_path).unwrap();
+        assert_eq!(backed_up_content, b"test content");
+    }
+
+    #[test]
+    fn test_backup_file_creates_parent_dirs() {
+        let source_dir = tempdir().unwrap();
+        let backup_dir = tempdir().unwrap();
+
+        // Create source file in subdirectory
+        let subdir = source_dir.path().join("subdir");
+        fs::create_dir(&subdir).unwrap();
+        let source_path = subdir.join("test.txt");
+        fs::write(&source_path, b"nested content").unwrap();
+
+        let result = backup_file(&source_path, backup_dir.path());
+        assert!(result.is_ok());
+
+        let backup_path = result.unwrap();
+        assert!(backup_path.exists());
+    }
+
+    #[test]
+    fn test_validate_backup_dir_inside_scanned() {
+        let scan_dir = tempdir().unwrap();
+        let backup_inside = scan_dir.path().join("backup");
+        fs::create_dir(&backup_inside).unwrap();
+
+        let result = validate_backup_dir(
+            &backup_inside,
+            &[scan_dir.path().to_owned()],
+        );
+
+        assert!(result.is_err());
+        match result.unwrap_err() {
+            ScanError::BackupInsideScanned(_, _) => {}
+            _ => panic!("Expected BackupInsideScanned error"),
+        }
+    }
+
+    #[test]
+    fn test_validate_backup_dir_outside_scanned() {
+        let scan_dir = tempdir().unwrap();
+        let backup_dir = tempdir().unwrap();
+
+        let result = validate_backup_dir(
+            backup_dir.path(),
+            &[scan_dir.path().to_owned()],
+        );
+
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_validate_backup_dir_multiple_scan_paths() {
+        let scan_dir1 = tempdir().unwrap();
+        let scan_dir2 = tempdir().unwrap();
+        let backup_dir = tempdir().unwrap();
+
+        let result = validate_backup_dir(
+            backup_dir.path(),
+            &[scan_dir1.path().to_owned(), scan_dir2.path().to_owned()],
+        );
+
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_backup_stats_default() {
+        let stats = BackupStats::default();
+        assert_eq!(stats.files_backed_up, 0);
+        assert_eq!(stats.bytes_backed_up, 0);
+        assert_eq!(stats.files_failed, 0);
+    }
+}

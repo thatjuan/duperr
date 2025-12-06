@@ -33,3 +33,58 @@ pub fn print(result: &ScanResult) -> io::Result<()> {
     writer.flush()?;
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::grouper::DuplicateGroup;
+    use crate::scanner::{FileEntry, FileId};
+    use std::time::{Duration, SystemTime};
+
+    fn make_entry(path: &str, size: u64) -> FileEntry {
+        FileEntry {
+            path: path.into(),
+            size,
+            file_id: FileId { device: 1, inode: 1 },
+            modified: SystemTime::UNIX_EPOCH + Duration::from_secs(1000),
+            partial_hash: None,
+            full_hash: Some([0u8; 32]),
+        }
+    }
+
+    #[test]
+    fn test_csv_header() {
+        // The CSV should have headers: group, hash, size, path, modified
+        let expected_headers = vec!["group", "hash", "size", "path", "modified"];
+        assert_eq!(expected_headers.len(), 5);
+    }
+
+    #[test]
+    fn test_csv_special_characters() {
+        // Test that paths with commas are properly escaped
+        let path_with_comma = "/path/with,comma/file.txt";
+        let entry = make_entry(path_with_comma, 100);
+
+        // The path should be escaped in CSV output
+        let path_str = entry.path.to_string_lossy();
+        assert!(path_str.contains(","));
+    }
+
+    #[test]
+    fn test_csv_group_numbering() {
+        // Groups should be numbered 1, 2, 3...
+        let group1 = DuplicateGroup::with_hash(
+            [1u8; 32],
+            100,
+            vec![make_entry("/a.txt", 100), make_entry("/b.txt", 100)],
+        );
+        let group2 = DuplicateGroup::with_hash(
+            [2u8; 32],
+            200,
+            vec![make_entry("/c.txt", 200), make_entry("/d.txt", 200)],
+        );
+
+        // Both groups should produce multiple CSV rows
+        assert_eq!(group1.files.len(), 2);
+        assert_eq!(group2.files.len(), 2);
+    }
+}

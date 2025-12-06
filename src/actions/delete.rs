@@ -182,3 +182,52 @@ pub fn dry_run(result: &ScanResult, keep_strategy: KeepStrategy) {
     println!();
     println!("Run with {} to actually delete files.", "--yes".cyan());
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tempfile::tempdir;
+    use std::fs;
+
+    #[test]
+    fn test_delete_file_success() {
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("to_delete.txt");
+        fs::write(&path, b"delete me").unwrap();
+
+        assert!(path.exists());
+
+        let result = delete_file(&path);
+        assert!(result.is_ok());
+        assert!(!path.exists());
+    }
+
+    #[test]
+    fn test_delete_file_not_found() {
+        let path = Path::new("/nonexistent/file/to/delete.txt");
+        let result = delete_file(path);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_delete_stats_default() {
+        let stats = DeleteStats::default();
+        assert_eq!(stats.files_deleted, 0);
+        assert_eq!(stats.bytes_freed, 0);
+        assert_eq!(stats.files_skipped, 0);
+        assert_eq!(stats.files_failed, 0);
+    }
+
+    #[test]
+    fn test_delete_choice_variants() {
+        // Just verify the enum works
+        let choices = [
+            DeleteChoice::Yes,
+            DeleteChoice::No,
+            DeleteChoice::All,
+            DeleteChoice::Quit,
+        ];
+
+        assert_eq!(choices.len(), 4);
+    }
+}

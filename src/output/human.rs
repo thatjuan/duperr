@@ -116,3 +116,71 @@ fn print_quiet(result: &ScanResult, handle: &mut impl Write) -> io::Result<()> {
     }
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::grouper::DuplicateGroup;
+    use crate::scanner::{FileEntry, FileId};
+    use crate::{ScanResult, ScanStats};
+    use std::time::{Duration, SystemTime};
+
+    fn make_entry(path: &str, size: u64) -> FileEntry {
+        FileEntry {
+            path: path.into(),
+            size,
+            file_id: FileId { device: 1, inode: 1 },
+            modified: SystemTime::UNIX_EPOCH + Duration::from_secs(1000),
+            partial_hash: None,
+            full_hash: Some([0u8; 32]),
+        }
+    }
+
+    fn make_result() -> ScanResult {
+        let group = DuplicateGroup::with_hash(
+            [1u8; 32],
+            100,
+            vec![make_entry("/a.txt", 100), make_entry("/b.txt", 100)],
+        );
+        ScanResult {
+            groups: vec![group],
+            stats: ScanStats {
+                total_files_scanned: 10,
+                total_bytes_scanned: 1000,
+                files_with_unique_size: 5,
+                duplicate_groups: 1,
+                duplicate_files: 1,
+                wasted_bytes: 100,
+                scan_duration: Duration::from_secs(1),
+            },
+        }
+    }
+
+    #[test]
+    fn test_quiet_mode_output() {
+        let result = make_result();
+        let mut buffer = Vec::new();
+
+        print_quiet(&result, &mut buffer).unwrap();
+
+        let output = String::from_utf8(buffer).unwrap();
+        // In quiet mode, should just print paths
+        assert!(output.contains("/a.txt") || output.contains("/b.txt"));
+    }
+
+    #[test]
+    fn test_no_duplicates() {
+        let result = ScanResult {
+            groups: vec![],
+            stats: ScanStats::default(),
+        };
+
+        assert!(!result.has_duplicates());
+    }
+
+    #[test]
+    fn test_has_duplicates() {
+        let result = make_result();
+        assert!(result.has_duplicates());
+    }
+}
