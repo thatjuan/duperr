@@ -73,8 +73,7 @@ impl Config {
         }
 
         // Build exclude glob set
-        let exclude = build_glob_set(&args.exclude)
-            .context("Invalid --exclude pattern")?;
+        let exclude = build_glob_set(&args.exclude).context("Invalid --exclude pattern")?;
 
         // Normalize extensions (remove dots if present)
         let extensions = args.extensions.map(|exts| {
@@ -84,9 +83,9 @@ impl Config {
         });
 
         // Determine progress bar visibility
-        let progress = args.progress.unwrap_or_else(|| {
-            !args.quiet && atty::is(atty::Stream::Stdout)
-        });
+        let progress = args
+            .progress
+            .unwrap_or_else(|| !args.quiet && atty::is(atty::Stream::Stdout));
 
         // Determine thread count
         let threads = args.threads.unwrap_or_else(|| {
@@ -194,13 +193,12 @@ fn build_glob_set(patterns: &[String]) -> Result<GlobSet> {
     let mut builder = GlobSetBuilder::new();
 
     for pattern in patterns {
-        let glob = Glob::new(pattern)
-            .with_context(|| format!("Invalid glob pattern: {}", pattern))?;
+        let glob =
+            Glob::new(pattern).with_context(|| format!("Invalid glob pattern: {}", pattern))?;
         builder.add(glob);
     }
 
-    builder.build()
-        .context("Failed to build glob set")
+    builder.build().context("Failed to build glob set")
 }
 
 #[cfg(test)]

@@ -1,6 +1,6 @@
-use crate::{ScanResult, ScanStats};
-use crate::grouper::DuplicateGroup;
 use crate::cli::KeepStrategy;
+use crate::grouper::DuplicateGroup;
+use crate::{ScanResult, ScanStats};
 use colored::Colorize;
 use humansize::{format_size, BINARY};
 use std::io::{self, Write};

@@ -175,10 +175,7 @@ fn test_quiet_mode() {
     fs::write(dir.path().join("b.txt"), "same").unwrap();
 
     let mut cmd = Command::cargo_bin("duperr").unwrap();
-    cmd.arg(dir.path())
-        .arg("--quiet")
-        .assert()
-        .success();
+    cmd.arg(dir.path()).arg("--quiet").assert().success();
     // In quiet mode, there should be minimal output
 }
 

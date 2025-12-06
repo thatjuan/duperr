@@ -1,10 +1,10 @@
-use std::path::{Path, PathBuf};
-use std::fs;
 use colored::Colorize;
+use std::fs;
+use std::path::{Path, PathBuf};
 
-use crate::ScanResult;
 use crate::cli::KeepStrategy;
 use crate::error::ScanError;
+use crate::ScanResult;
 
 /// Statistics about backup operation
 #[derive(Debug, Default)]
@@ -43,20 +43,11 @@ pub fn backup_duplicates(
                 Ok(_) => {
                     stats.files_backed_up += 1;
                     stats.bytes_backed_up += file.size;
-                    println!(
-                        "  {} {}",
-                        "✓".green(),
-                        file.path.display()
-                    );
+                    println!("  {} {}", "✓".green(), file.path.display());
                 }
                 Err(e) => {
                     stats.files_failed += 1;
-                    eprintln!(
-                        "  {} {} ({})",
-                        "✗".red(),
-                        file.path.display(),
-                        e
-                    );
+                    eprintln!("  {} {} ({})", "✗".red(), file.path.display(), e);
                 }
             }
         }
@@ -74,8 +65,7 @@ fn backup_file(source: &Path, backup_dir: &Path) -> Result<PathBuf, ScanError> {
 
     // Create parent directories
     if let Some(parent) = dest.parent() {
-        fs::create_dir_all(parent)
-            .map_err(|e| ScanError::BackupDirCreate(parent.to_owned(), e))?;
+        fs::create_dir_all(parent).map_err(|e| ScanError::BackupDirCreate(parent.to_owned(), e))?;
     }
 
     // Copy file
@@ -123,11 +113,14 @@ fn print_backup_summary(stats: &BackupStats) {
 /// Checks that it's not inside any of the scanned directories
 /// (to avoid backing up into a directory we're scanning).
 pub fn validate_backup_dir(backup_dir: &Path, scan_paths: &[PathBuf]) -> Result<(), ScanError> {
-    let backup_canonical = backup_dir.canonicalize()
+    let backup_canonical = backup_dir
+        .canonicalize()
         .or_else(|_| {
             // Directory might not exist yet, try parent
             if let Some(parent) = backup_dir.parent() {
-                parent.canonicalize().map(|p| p.join(backup_dir.file_name().unwrap_or_default()))
+                parent
+                    .canonicalize()
+                    .map(|p| p.join(backup_dir.file_name().unwrap_or_default()))
             } else {
                 Ok(backup_dir.to_owned())
             }
@@ -139,7 +132,7 @@ pub fn validate_backup_dir(backup_dir: &Path, scan_paths: &[PathBuf]) -> Result<
             if backup_canonical.starts_with(&scan_canonical) {
                 return Err(ScanError::BackupInsideScanned(
                     backup_dir.to_owned(),
-                    scan_path.to_owned()
+                    scan_path.to_owned(),
                 ));
             }
         }

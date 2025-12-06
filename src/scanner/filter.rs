@@ -1,6 +1,6 @@
-use std::path::Path;
 use globset::{Glob, GlobSet, GlobSetBuilder};
 use std::fs::Metadata;
+use std::path::Path;
 
 pub struct FileFilter {
     pub min_size: Option<u64>,
@@ -28,9 +28,7 @@ impl FileFilter {
         Ok(Self {
             min_size,
             max_size,
-            extensions: extensions.map(|exts| {
-                exts.into_iter().map(|e| e.to_lowercase()).collect()
-            }),
+            extensions: extensions.map(|exts| exts.into_iter().map(|e| e.to_lowercase()).collect()),
             exclude_patterns: builder.build()?,
             include_hidden,
             skip_empty,
@@ -48,22 +46,29 @@ impl FileFilter {
 
         // Check size bounds
         if let Some(min) = self.min_size {
-            if size < min { return false; }
+            if size < min {
+                return false;
+            }
         }
         if let Some(max) = self.max_size {
-            if size > max { return false; }
+            if size > max {
+                return false;
+            }
         }
 
         // Check hidden files
         if !self.include_hidden {
             if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
-                if name.starts_with('.') { return false; }
+                if name.starts_with('.') {
+                    return false;
+                }
             }
         }
 
         // Check extension filter
         if let Some(ref exts) = self.extensions {
-            let file_ext = path.extension()
+            let file_ext = path
+                .extension()
                 .and_then(|e| e.to_str())
                 .map(|e| e.to_lowercase());
 
@@ -96,10 +101,14 @@ mod tests {
     #[test]
     fn test_extension_filter() {
         let filter = FileFilter::new(
-            None, None,
+            None,
+            None,
             Some(vec!["txt".to_string(), "md".to_string()]),
-            &[], false, false, // skip_empty = false
-        ).unwrap();
+            &[],
+            false,
+            false, // skip_empty = false
+        )
+        .unwrap();
 
         let dir = tempdir().unwrap();
         let txt_path = dir.path().join("test.txt");
@@ -117,10 +126,7 @@ mod tests {
 
     #[test]
     fn test_size_filter() {
-        let filter = FileFilter::new(
-            Some(100), Some(1000),
-            None, &[], false, true,
-        ).unwrap();
+        let filter = FileFilter::new(Some(100), Some(1000), None, &[], false, true).unwrap();
 
         let dir = tempdir().unwrap();
         let small = dir.path().join("small.txt");
@@ -171,10 +177,14 @@ mod tests {
     #[test]
     fn test_exclude_pattern() {
         let filter = FileFilter::new(
-            None, None, None,
+            None,
+            None,
+            None,
             &["*.tmp".to_string(), "cache/*".to_string()],
-            false, false,
-        ).unwrap();
+            false,
+            false,
+        )
+        .unwrap();
 
         let dir = tempdir().unwrap();
         let tmp_file = dir.path().join("temp.tmp");

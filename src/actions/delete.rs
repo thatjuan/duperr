@@ -1,11 +1,11 @@
-use std::path::Path;
-use std::fs;
-use dialoguer::Select;
 use colored::Colorize;
+use dialoguer::Select;
+use std::fs;
+use std::path::Path;
 
-use crate::ScanResult;
 use crate::cli::KeepStrategy;
 use crate::error::ScanError;
+use crate::ScanResult;
 
 /// Statistics about deletion operation
 #[derive(Debug, Default)]
@@ -56,20 +56,11 @@ pub fn interactive_delete(
                     Ok(()) => {
                         stats.files_deleted += 1;
                         stats.bytes_freed += file.size;
-                        println!(
-                            "  {} Deleted: {}",
-                            "✓".green(),
-                            file.path.display()
-                        );
+                        println!("  {} Deleted: {}", "✓".green(), file.path.display());
                     }
                     Err(e) => {
                         stats.files_failed += 1;
-                        println!(
-                            "  {} Failed: {} ({})",
-                            "✗".red(),
-                            file.path.display(),
-                            e
-                        );
+                        println!("  {} Failed: {} ({})", "✗".red(), file.path.display(), e);
                     }
                 }
                 continue;
@@ -78,18 +69,16 @@ pub fn interactive_delete(
             let choice = prompt_delete_choice(&file.path)?;
 
             match choice {
-                DeleteChoice::Yes => {
-                    match delete_file(&file.path) {
-                        Ok(()) => {
-                            stats.files_deleted += 1;
-                            stats.bytes_freed += file.size;
-                        }
-                        Err(e) => {
-                            stats.files_failed += 1;
-                            eprintln!("  {} Failed to delete: {}", "✗".red(), e);
-                        }
+                DeleteChoice::Yes => match delete_file(&file.path) {
+                    Ok(()) => {
+                        stats.files_deleted += 1;
+                        stats.bytes_freed += file.size;
                     }
-                }
+                    Err(e) => {
+                        stats.files_failed += 1;
+                        eprintln!("  {} Failed to delete: {}", "✗".red(), e);
+                    }
+                },
                 DeleteChoice::No => {
                     stats.files_skipped += 1;
                 }
@@ -124,7 +113,7 @@ fn prompt_delete_choice(path: &Path) -> Result<DeleteChoice, ScanError> {
     let selection = Select::new()
         .with_prompt(format!("Delete {}?", path.display()))
         .items(items)
-        .default(0)  // Default to "No" for safety
+        .default(0) // Default to "No" for safety
         .interact()
         .map_err(|_| ScanError::Cancelled)?;
 
@@ -137,14 +126,16 @@ fn prompt_delete_choice(path: &Path) -> Result<DeleteChoice, ScanError> {
 }
 
 fn delete_file(path: &Path) -> Result<(), ScanError> {
-    fs::remove_file(path)
-        .map_err(|e| ScanError::DeleteFailed(path.to_owned(), e))
+    fs::remove_file(path).map_err(|e| ScanError::DeleteFailed(path.to_owned(), e))
 }
 
 fn print_delete_summary(stats: &DeleteStats) {
     println!();
     println!("{}", "Deletion Summary:".bold());
-    println!("  Files deleted: {}", stats.files_deleted.to_string().green());
+    println!(
+        "  Files deleted: {}",
+        stats.files_deleted.to_string().green()
+    );
     println!(
         "  Space freed:   {}",
         humansize::format_size(stats.bytes_freed, humansize::BINARY).yellow()
@@ -172,18 +163,10 @@ pub fn dry_run(result: &ScanResult, keep_strategy: KeepStrategy) {
             None => continue,
         };
 
-        println!(
-            "{} Would keep: {}",
-            "→".green(),
-            keeper.path.display()
-        );
+        println!("{} Would keep: {}", "→".green(), keeper.path.display());
 
         for file in group.get_duplicates(keep_strategy) {
-            println!(
-                "  {} Would delete: {}",
-                "×".red(),
-                file.path.display()
-            );
+            println!("  {} Would delete: {}", "×".red(), file.path.display());
             total_files += 1;
             total_bytes += file.size;
         }

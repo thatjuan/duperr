@@ -1,14 +1,14 @@
 // Library root - re-exports modules
 
-pub mod cli;
-pub mod scanner;
-pub mod hasher;
-pub mod grouper;
-pub mod output;
 pub mod actions;
-pub mod progress;
+pub mod cli;
 pub mod error;
+pub mod grouper;
+pub mod hasher;
+pub mod output;
 pub mod pipeline;
+pub mod progress;
+pub mod scanner;
 
 use std::time::Duration;
 

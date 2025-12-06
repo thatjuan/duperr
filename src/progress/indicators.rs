@@ -1,4 +1,4 @@
-use indicatif::{MultiProgress, ProgressBar, ProgressStyle, ProgressDrawTarget};
+use indicatif::{MultiProgress, ProgressBar, ProgressDrawTarget, ProgressStyle};
 use std::sync::Arc;
 
 /// Progress manager for the scanning pipeline
@@ -25,7 +25,7 @@ impl ProgressManager {
             ProgressStyle::default_spinner()
                 .template("{spinner:.cyan} {msg}")
                 .unwrap()
-                .tick_strings(&["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"])
+                .tick_strings(&["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]),
         );
         pb.set_message(message.to_string());
         pb.enable_steady_tick(std::time::Duration::from_millis(80));
@@ -39,7 +39,7 @@ impl ProgressManager {
             ProgressStyle::default_bar()
                 .template("{msg} [{elapsed_precise}] [{bar:40.cyan/blue}] {pos}/{len} ({percent}%)")
                 .unwrap()
-                .progress_chars("█▓▒░")
+                .progress_chars("█▓▒░"),
         );
         pb.set_message(message.to_string());
         pb
@@ -72,7 +72,9 @@ pub struct SharedProgress {
 
 impl SharedProgress {
     pub fn new(pb: ProgressBar) -> Self {
-        Self { inner: Arc::new(pb) }
+        Self {
+            inner: Arc::new(pb),
+        }
     }
 
     pub fn inc(&self, delta: u64) {

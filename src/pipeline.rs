@@ -6,16 +6,14 @@ use rayon::ThreadPoolBuilder;
 use std::time::Instant;
 
 use crate::cli::Config;
-use crate::scanner::{Scanner, FileFilter};
+use crate::error::ScanError;
 use crate::grouper::{
-    group_by_size_with_stats,
-    group_by_partial_hash_with_progress,
-    group_by_full_hash_with_progress,
-    verify_with_byte_compare
+    group_by_full_hash_with_progress, group_by_partial_hash_with_progress,
+    group_by_size_with_stats, verify_with_byte_compare,
 };
 use crate::progress::{ProgressManager, SharedProgress};
+use crate::scanner::{FileFilter, Scanner};
 use crate::{ScanResult, ScanStats};
-use crate::error::ScanError;
 
 /// Run the complete duplicate finding pipeline
 pub fn find_duplicates(config: &Config) -> Result<ScanResult, ScanError> {
@@ -75,10 +73,8 @@ pub fn find_duplicates(config: &Config) -> Result<ScanResult, ScanError> {
     let partial_pb = progress.create_progress_bar(candidate_count, "Partial hashing");
     let partial_progress = SharedProgress::new(partial_pb);
 
-    let partial_groups = group_by_partial_hash_with_progress(
-        size_groups,
-        Some(partial_progress.clone()),
-    )?;
+    let partial_groups =
+        group_by_partial_hash_with_progress(size_groups, Some(partial_progress.clone()))?;
 
     partial_progress.finish_with_message("Partial hashing complete");
 
@@ -101,10 +97,8 @@ pub fn find_duplicates(config: &Config) -> Result<ScanResult, ScanError> {
     let full_pb = progress.create_progress_bar(full_hash_count, "Full hashing");
     let full_progress = SharedProgress::new(full_pb);
 
-    let mut duplicate_groups = group_by_full_hash_with_progress(
-        partial_groups,
-        Some(full_progress.clone()),
-    )?;
+    let mut duplicate_groups =
+        group_by_full_hash_with_progress(partial_groups, Some(full_progress.clone()))?;
 
     full_progress.finish_with_message("Full hashing complete");
 
@@ -121,7 +115,10 @@ pub fn find_duplicates(config: &Config) -> Result<ScanResult, ScanError> {
         total_bytes_scanned: total_bytes,
         files_with_unique_size: size_stats.unique_sizes as u64,
         duplicate_groups: duplicate_groups.len() as u64,
-        duplicate_files: duplicate_groups.iter().map(|g| g.duplicate_count() as u64).sum(),
+        duplicate_files: duplicate_groups
+            .iter()
+            .map(|g| g.duplicate_count() as u64)
+            .sum(),
         wasted_bytes: duplicate_groups.iter().map(|g| g.wasted_bytes()).sum(),
         scan_duration: start.elapsed(),
     };

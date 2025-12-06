@@ -62,19 +62,17 @@ impl ScanError {
 
     /// Check if this error should stop the entire operation
     pub fn is_fatal(&self) -> bool {
-        matches!(self,
-            ScanError::Config(_) |
-            ScanError::BackupInsideScanned(_, _) |
-            ScanError::Cancelled
+        matches!(
+            self,
+            ScanError::Config(_) | ScanError::BackupInsideScanned(_, _) | ScanError::Cancelled
         )
     }
 
     /// Check if this error can be safely ignored (logged as warning)
     pub fn is_ignorable(&self) -> bool {
-        matches!(self,
-            ScanError::PermissionDenied(_) |
-            ScanError::NotFound(_) |
-            ScanError::FileRead(_, _)
+        matches!(
+            self,
+            ScanError::PermissionDenied(_) | ScanError::NotFound(_) | ScanError::FileRead(_, _)
         )
     }
 }
@@ -114,7 +112,8 @@ impl ErrorLog {
         use colored::Colorize;
 
         eprintln!();
-        eprintln!("{} {} warning(s) encountered during scan:",
+        eprintln!(
+            "{} {} warning(s) encountered during scan:",
             "Warning:".yellow().bold(),
             self.len()
         );

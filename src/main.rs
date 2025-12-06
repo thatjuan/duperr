@@ -1,9 +1,9 @@
+use anyhow::Context;
 use clap::Parser;
 use colored::Colorize;
-use anyhow::Context;
 use duperr::cli::{Args, Config, OutputFormat};
 use duperr::pipeline::find_duplicates;
-use duperr::{output, actions};
+use duperr::{actions, output};
 
 fn main() {
     // Initialize logger
@@ -34,21 +34,21 @@ fn main() {
 
 fn run() -> anyhow::Result<()> {
     let args = Args::parse();
-    let config = Config::from_args(args)
-        .context("Failed to parse configuration")?;
+    let config = Config::from_args(args).context("Failed to parse configuration")?;
 
     // Run the duplicate finding pipeline
-    let result = find_duplicates(&config)
-        .context("Failed to scan for duplicates")?;
+    let result = find_duplicates(&config).context("Failed to scan for duplicates")?;
 
     // Output results
     match config.output {
         OutputFormat::Human => output::human::print(&result, config.keep, config.quiet)
             .context("Failed to print results")?,
-        OutputFormat::Json => output::json::print(&result)
-            .context("Failed to generate JSON output")?,
-        OutputFormat::Csv => output::csv::print(&result)
-            .context("Failed to generate CSV output")?,
+        OutputFormat::Json => {
+            output::json::print(&result).context("Failed to generate JSON output")?
+        }
+        OutputFormat::Csv => {
+            output::csv::print(&result).context("Failed to generate CSV output")?
+        }
     }
 
     // Handle deletion if requested

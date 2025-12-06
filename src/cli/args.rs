@@ -45,7 +45,6 @@ pub struct Args {
     pub paths: Vec<PathBuf>,
 
     // === Filtering Options ===
-
     /// Minimum file size (e.g., 1K, 1M, 1G). Files smaller are skipped.
     #[arg(long, value_name = "SIZE")]
     pub min_size: Option<String>,
@@ -75,7 +74,6 @@ pub struct Args {
     pub depth: Option<usize>,
 
     // === Output Options ===
-
     /// Output format for results
     #[arg(short = 'o', long, value_enum, default_value = "human")]
     pub output: OutputFormat,
@@ -93,7 +91,6 @@ pub struct Args {
     pub progress: Option<bool>,
 
     // === Action Options ===
-
     /// Enable deletion mode (dry-run by default unless --yes)
     #[arg(long)]
     pub delete: bool,
@@ -115,13 +112,11 @@ pub struct Args {
     pub yes: bool,
 
     // === Performance Options ===
-
     /// Number of threads (default: number of CPU cores)
     #[arg(short = 'j', long, value_name = "N")]
     pub threads: Option<usize>,
 
     // === Safety Options ===
-
     /// Byte-by-byte comparison after hash match (slower but paranoid-safe)
     #[arg(long)]
     pub paranoid: bool,

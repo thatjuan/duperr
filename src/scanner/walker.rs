@@ -1,8 +1,8 @@
+use crate::error::ScanError;
+use crate::scanner::{FileEntry, FileFilter, FileId};
 use std::collections::HashSet;
 use std::path::Path;
-use walkdir::{WalkDir, DirEntry};
-use crate::scanner::{FileEntry, FileFilter, FileId};
-use crate::error::ScanError;
+use walkdir::{DirEntry, WalkDir};
 
 pub struct Scanner {
     filter: FileFilter,
@@ -11,11 +11,7 @@ pub struct Scanner {
 }
 
 impl Scanner {
-    pub fn new(
-        filter: FileFilter,
-        follow_symlinks: bool,
-        max_depth: Option<usize>,
-    ) -> Self {
+    pub fn new(filter: FileFilter, follow_symlinks: bool, max_depth: Option<usize>) -> Self {
         Self {
             filter,
             follow_symlinks,
@@ -41,8 +37,7 @@ impl Scanner {
         files: &mut Vec<FileEntry>,
         seen_files: &mut HashSet<FileId>,
     ) -> Result<(), ScanError> {
-        let mut walker = WalkDir::new(path)
-            .follow_links(self.follow_symlinks);
+        let mut walker = WalkDir::new(path).follow_links(self.follow_symlinks);
 
         if let Some(depth) = self.max_depth {
             walker = walker.max_depth(depth);
@@ -71,7 +66,8 @@ impl Scanner {
         files: &mut Vec<FileEntry>,
         seen_files: &mut HashSet<FileId>,
     ) -> Result<(), ScanError> {
-        let metadata = entry.metadata()
+        let metadata = entry
+            .metadata()
             .map_err(|e| ScanError::Metadata(entry.path().to_owned(), e.into()))?;
 
         // Skip non-regular files (directories, symlinks, devices, sockets, etc.)

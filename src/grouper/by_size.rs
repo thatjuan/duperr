@@ -1,6 +1,6 @@
-use std::collections::HashMap;
-use crate::scanner::FileEntry;
 use crate::grouper::DuplicateGroup;
+use crate::scanner::FileEntry;
+use std::collections::HashMap;
 
 /// Group files by size, filtering out unique sizes (no possible duplicates)
 ///
@@ -81,7 +81,10 @@ mod tests {
         FileEntry {
             path: path.into(),
             size,
-            file_id: FileId { device: 0, inode: 0 },
+            file_id: FileId {
+                device: 0,
+                inode: 0,
+            },
             modified: SystemTime::UNIX_EPOCH,
             partial_hash: None,
             full_hash: None,
@@ -112,10 +115,7 @@ mod tests {
 
     #[test]
     fn test_group_by_size_empty_files() {
-        let files = vec![
-            make_entry("empty1.txt", 0),
-            make_entry("empty2.txt", 0),
-        ];
+        let files = vec![make_entry("empty1.txt", 0), make_entry("empty2.txt", 0)];
 
         let groups_include = group_by_size(files.clone(), true);
         let groups_exclude = group_by_size(files, false);

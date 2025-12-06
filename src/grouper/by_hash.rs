@@ -1,10 +1,10 @@
-use std::collections::HashMap;
-use rayon::prelude::*;
-use crate::scanner::FileEntry;
-use crate::grouper::DuplicateGroup;
-use crate::hasher::{partial, full};
 use crate::error::ScanError;
+use crate::grouper::DuplicateGroup;
+use crate::hasher::{full, partial};
 use crate::progress::SharedProgress;
+use crate::scanner::FileEntry;
+use rayon::prelude::*;
+use std::collections::HashMap;
 
 /// Group files by partial hash (first 4KB) - PARALLEL
 ///
@@ -25,7 +25,8 @@ pub fn group_by_partial_hash_with_progress(
 
     for group in groups {
         // Compute partial hashes in parallel
-        let files_with_hashes: Result<Vec<_>, ScanError> = group.files
+        let files_with_hashes: Result<Vec<_>, ScanError> = group
+            .files
             .into_par_iter()
             .map(|mut file| {
                 let hash = partial::partial_hash(&file.path)?;
@@ -59,9 +60,7 @@ pub fn group_by_partial_hash_with_progress(
 /// Group files by full hash - PARALLEL
 ///
 /// Takes partial-hash-grouped candidates and computes full hashes in parallel.
-pub fn group_by_full_hash(
-    groups: Vec<DuplicateGroup>,
-) -> Result<Vec<DuplicateGroup>, ScanError> {
+pub fn group_by_full_hash(groups: Vec<DuplicateGroup>) -> Result<Vec<DuplicateGroup>, ScanError> {
     group_by_full_hash_with_progress(groups, None)
 }
 
@@ -74,7 +73,8 @@ pub fn group_by_full_hash_with_progress(
 
     for group in groups {
         // Compute full hashes in parallel
-        let files_with_hashes: Result<Vec<_>, ScanError> = group.files
+        let files_with_hashes: Result<Vec<_>, ScanError> = group
+            .files
             .into_par_iter()
             .map(|mut file| {
                 let hash = full::full_hash(&file.path, file.size)?;
@@ -119,14 +119,15 @@ pub fn verify_with_byte_compare(
             let reference = &group.files[0];
             let verified: Vec<FileEntry> = std::iter::once(group.files[0].clone())
                 .chain(
-                    group.files[1..].par_iter()
+                    group.files[1..]
+                        .par_iter()
                         .filter_map(|file| {
                             match full::compare_files(&reference.path, &file.path, group.size) {
                                 Ok(true) => Some(file.clone()),
                                 _ => None,
                             }
                         })
-                        .collect::<Vec<_>>()
+                        .collect::<Vec<_>>(),
                 )
                 .collect();
 

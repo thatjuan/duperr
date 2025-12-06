@@ -21,7 +21,10 @@ impl FileId {
     #[cfg(not(unix))]
     pub fn from_metadata(_metadata: &std::fs::Metadata) -> Self {
         // On Windows, use a placeholder - hardlink detection won't work
-        Self { device: 0, inode: 0 }
+        Self {
+            device: 0,
+            inode: 0,
+        }
     }
 }
 
